@@ -21,37 +21,30 @@ userController.createUser = async (req, res, next) => {
 
 //Get Users
 userController.getUsers = async (req, res, next) => {
-  //in real project you will getting condition from from req then construct the filter object for query
-  // empty filter mean get all
-  const allowedFilters = ["name", "role"];
-  const { name, role, ...filterQuery } = req.query;
+  const allowedFilter = ["name", "role"];
+  const { ...filterQuery } = req.query;
+  console.log("req.query", req.query);
   try {
     const filterKeys = Object.keys(filterQuery);
     filterKeys.forEach((key) => {
-      if (!allowedFilters.includes(key))
+      if (!allowedFilter.includes(key))
         throw new AppError(400, `query ${key} is not allowed`, "Bad request");
-      //delete query without value
-      if (!filterQuery[key]) delete filterQuery[key];
     });
 
     //Get users
-    filterQuery.isDeleted = false; //only show non-deleted
-    const listOfUsers = await User.find(filterQuery).populate("tasks");
+    const { name, role } = filterQuery;
+    const listOfUsers = await User.find({
+      name: !name ? { $exists: true } : name,
+      role: !role ? { $exists: true } : role,
+      // isDeleted: false,
+    }).populate("tasks");
 
-    // pagination
-    const page = req.query.page || 1;
-    const limit = req.query.limit || 10;
-    let offset = limit * (page - 1);
-    let users = listOfUsers.slice(offset, offset + limit);
-
-    let totalUsers = await User.find({ isDeleted: false }).count();
-    const userData = { totalUsers, users };
-
+    //--Send Response
     sendResponse(
       res,
       200,
       true,
-      { userData },
+      listOfUsers,
       null,
       "Found list of users success"
     );
@@ -61,17 +54,11 @@ userController.getUsers = async (req, res, next) => {
 };
 
 userController.getUserById = async (req, res, next) => {
-  //in real project you will getting id from req. For updating and deleting, it is recommended for you to use unique identifier such as _id to avoid duplication
-  //you will also get updateInfo from req
-  // empty target and info mean update nothing
   const { targetId } = req.params;
-
   try {
     if (!targetId) throw new AppError(400, "Missing user id", "Bad Request");
-
     //--Query
     const singleUser = await User.findById(targetId).populate("tasks");
-
     if (!singleUser)
       sendResponse(
         res,
@@ -89,15 +76,12 @@ userController.getUserById = async (req, res, next) => {
 };
 
 userController.updateUserById = async (req, res, next) => {
-  //in real project you will getting id from req. For updating and deleting, it is recommended for you to use unique identifier such as _id to avoid duplication
-  //you will also get updateInfo from req
-  // empty target and info mean update nothing
   const { targetId } = req.params;
 
   const { ...updateInfo } = req.body;
   const options = { new: true };
 
-  const allowedUpdate = ["name", "role", "idDeleted"];
+  const allowedUpdate = ["name", "role"];
   try {
     //check valid field
     if (!updateInfo || !targetId)
@@ -123,18 +107,20 @@ userController.updateUserById = async (req, res, next) => {
 };
 
 userController.deleteUserById = async (req, res, next) => {
-  //in real project you will getting id from req. For updating and deleting, it is recommended for you to use unique identifier such as _id to avoid duplication
-  // empty target mean delete nothing
   const { targetId } = req.params;
 
-  const options = { new: true };
   try {
-    if (!targetId) throw new AppError(400, "No User id", "Bad Request");
-    console.log("hello", targetId);
+    if (!targetId) throw new AppError(400, "No user id", "Bad Request");
     //--Query
-    const updated = await User.findByIdAndDelete(targetId, options);
+    let targetUser = await User.findById(targetId);
+    if (!targetUser) throw new AppError(404, "User not found", "Not found");
 
-    sendResponse(res, 200, true, { updated }, null, "Delete user success");
+    const deletedUser = await User.findByIdAndUpdate(
+      targetId,
+      { isDeleted: true },
+      { new: true }
+    );
+    sendResponse(res, 200, true, { deletedUser }, null, "Delete user success");
   } catch (err) {
     next(err);
   }
