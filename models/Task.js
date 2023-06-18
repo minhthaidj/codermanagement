@@ -9,7 +9,6 @@ const taskSchema = mongoose.Schema(
     status: {
       type: String,
       enum: ["pending", "working", "review", "done", "archive"],
-      required: true,
       default: "pending",
     },
     isDeleted: { type: Boolean, required: true, default: false },

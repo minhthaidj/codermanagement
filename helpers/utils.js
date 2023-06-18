@@ -22,14 +22,4 @@ class AppError extends Error {
 }
 
 utilsHelper.AppError = AppError;
-
-// let ObjectId = require("mongoose").Types.ObjectId;
-// utilsHelper.validator = (id) => {
-//   if (ObjectId.isValid(id)) {
-//     return true;
-//   } else {
-//     throw new AppError(400, "Invalid information: id", "Bad Request");
-//   }
-// };
-
 module.exports = utilsHelper;
