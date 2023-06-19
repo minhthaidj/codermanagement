@@ -59,7 +59,7 @@ userController.getUserById = async (req, res, next) => {
     if (!targetId) throw new AppError(400, "Missing user id", "Bad Request");
     //--Query
     const singleUser = await User.findById(targetId).populate("tasks");
-    if (!singleUser)
+    if (!singleUser) {
       sendResponse(
         res,
         404,
@@ -68,6 +68,9 @@ userController.getUserById = async (req, res, next) => {
         "Not found",
         "Can't find user with this id"
       );
+    } else if (singleUser.isDeleted === true) {
+      throw new AppError(400, "User is deleted", "Bad request");
+    }
 
     sendResponse(res, 200, true, { singleUser }, null, "Get one user success");
   } catch (err) {
@@ -131,8 +134,9 @@ userController.getTasksByUserId = async (req, res, next) => {
 
   try {
     if (!targetId) throw new AppError(400, "Missing user id", "Bad request");
-    const userFound = await User.findById(targetId).populate("tasks");
+    let userFound = await User.findById(targetId);
     if (!userFound) sendResponse(res, 404, false, null, null, "No user found");
+    console.log("test", userFound);
     sendResponse(
       res,
       200,

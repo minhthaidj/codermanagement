@@ -61,14 +61,14 @@ taskController.getTasks = async (req, res, next) => {
         description: !description ? { $exists: true } : description,
         assignee: assignee,
         isDeleted: false,
-      }).populate("assignee");
+      });
     } else if (!assignee && status) {
       listOfTasks = await Task.find({
         name: !name ? { $exists: true } : name,
         description: !description ? { $exists: true } : description,
         status: status,
         isDeleted: false,
-      }).populate("assignee");
+      });
     } else if (assignee && status) {
       listOfTasks = await Task.find({
         name: !name ? { $exists: true } : name,
@@ -76,14 +76,13 @@ taskController.getTasks = async (req, res, next) => {
         assignee: assignee,
         status: status,
         isDeleted: false,
-      }).populate("assignee");
+      });
     } else if (!assignee && !status) {
       listOfTasks = await Task.find({
         name: !name ? { $exists: true } : name,
         description: !description ? { $exists: true } : description,
         isDeleted: false,
-      }).populate("assignee");
-      console.log("a");
+      });
     }
 
     console.log(listOfTasks, "listOfTasks");
@@ -102,12 +101,22 @@ taskController.getTasks = async (req, res, next) => {
 };
 
 taskController.getTaskById = async (req, res, next) => {
-  const { taskId } = req.params;
+  let { taskId } = req.params;
   try {
     //--Query
-    const taskById = await Task.findById(taskId).populate("assignee");
-
-    sendResponse(res, 200, true, { taskById }, null, "Get task by id success");
+    const taskById = await Task.findById(taskId);
+    if (taskById.isDeleted === true) {
+      throw new AppError(400, "Task is deleted", "Bad request");
+    } else {
+      sendResponse(
+        res,
+        200,
+        true,
+        { taskById },
+        null,
+        "Get task by id success"
+      );
+    }
   } catch (error) {
     next(error);
   }
@@ -135,9 +144,24 @@ taskController.updateTask = async (req, res, next) => {
     //--Query
     const targetTask = await Task.findById(taskId);
     if (!targetTask) throw new AppError(404, "Task not found", "Bad Request");
+
+    //status done to archive
+    const { status } = targetTask;
+    switch (status) {
+      case "done":
+        if (updateInfo.status !== "archive") {
+          throw new AppError(
+            400,
+            "Done task can only be stored as archive",
+            "Bad request"
+          );
+        }
+        break;
+    }
+
     const updatedTask = await Task.findByIdAndUpdate(taskId, updateInfo, {
       new: true,
-    }).populate("assignee");
+    });
 
     sendResponse(res, 200, true, { updatedTask }, null, "update task success");
   } catch (error) {
