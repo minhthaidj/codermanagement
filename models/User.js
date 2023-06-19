@@ -10,7 +10,7 @@ const userSchema = mongoose.Schema(
       require: true,
       default: "employee",
     },
-    tasks: { type: [mongoose.SchemaTypes.ObjectId], ref: "Task" },
+    tasks: [{ type: mongoose.SchemaTypes.ObjectId, ref: "Task" }],
     isDeleted: { type: Boolean, required: true, default: false },
   },
   {
