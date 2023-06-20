@@ -1,4 +1,5 @@
 const { sendResponse, AppError } = require("../helpers/utils.js");
+const Task = require("../models/Task.js");
 const ObjectId = require("mongoose").Types.ObjectId;
 const User = require("../models/User.js");
 
@@ -10,6 +11,10 @@ userController.createUser = async (req, res, next) => {
 
   try {
     if (!info) throw new AppError(400, "Missing information", "Bad Request");
+    const duplicateUser = await User.findOne({ name: info.name });
+    if (duplicateUser) {
+      throw new AppError(400, "Duplicate user", "User already exists");
+    }
     const created = await User.create(info);
 
     //Send response
@@ -37,7 +42,7 @@ userController.getUsers = async (req, res, next) => {
       name: !name ? { $exists: true } : name,
       role: !role ? { $exists: true } : role,
       // isDeleted: false,
-    }).populate("tasks");
+    }).populate("tasks.task");
 
     //--Send Response
     sendResponse(
@@ -58,7 +63,8 @@ userController.getUserById = async (req, res, next) => {
   try {
     if (!targetId) throw new AppError(400, "Missing user id", "Bad Request");
     //--Query
-    const singleUser = await User.findById(targetId).populate("tasks");
+    let singleUser = await User.findById(targetId).populate("tasks.task");
+    // singleUser = await singleUser.populate("tasks");
     if (!singleUser) {
       sendResponse(
         res,
@@ -90,7 +96,7 @@ userController.updateUserById = async (req, res, next) => {
     if (!updateInfo || !targetId)
       throw new AppError(400, "No request body or no User id", "Bad Request");
 
-    const foundUser = await User.findById(targetId);
+    const foundUser = await User.findById(targetId).populate("tasks.task");
     if (!foundUser) throw new AppError(404, "User does not exist", "Not Found");
 
     const updateFields = Object.keys(updateInfo);
@@ -134,7 +140,7 @@ userController.getTasksByUserId = async (req, res, next) => {
 
   try {
     if (!targetId) throw new AppError(400, "Missing user id", "Bad request");
-    let userFound = await User.findById(targetId);
+    let userFound = await User.findById(targetId).populate("tasks.task");
     if (!userFound) sendResponse(res, 404, false, null, null, "No user found");
     console.log("test", userFound);
     sendResponse(
